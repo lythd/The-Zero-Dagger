@@ -2,6 +2,9 @@ vars /game_vars
     CCC/levels level_ptr
     U px = 128
     U py = 128
+    U sx = 0
+    U sy = 0
+    U nmc = %00000000 // either %00 %01 %10 %11, name table coordinates
 
 // charmaps can be used to get a nice syntax for defining levels.
 charmap(".,-_#$")
@@ -67,7 +70,15 @@ nmi main_nmi()
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
 
     // Reset the scroll
-    ppu_reset_scroll(0, 0)
+    if sx == 255
+        nmc ^= %00000001 // flip x nametable before rollover
+    if sy == 254
+        nmc ^= %00000010 // flip y nametable before rollover
+    if sx == 255 || sy == 254
+        {PPUCTRL}(PPUCTRL_NMI_ON | nmc) // update active nametable
+    sx += 1
+    sy += 2
+    ppu_reset_scroll(sx, sy) // set scroll within nametable to sx, sy
     
 mode main()
 : nmi main_nmi
@@ -97,7 +108,7 @@ mode main()
     state(M30_CHR(0))
 
     // Tell the NES to trigger NMI once per frame:
-    {PPUCTRL}(PPUCTRL_NMI_ON)
+    {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
 
     // Wait forever, one frame at a time:
     while true
