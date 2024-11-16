@@ -1,4 +1,7 @@
-fn update_sprites()
+// sprites.fab, functions prefixed with sprites_
+// Concerned with sprites including the player
+
+fn sprites_update()
     // Our stack index into OAM
     U i = 0
 
@@ -14,21 +17,21 @@ fn update_sprites()
     // Clear the remainder of OAM
     hide_oam(i)
 
-fn move_player()    
+fn sprites_moveplayer()    
     // Move the player horizontally based on button presses
     if pads[0].held & BUTTON_LEFT
-        if tile_at(px - 1, py) == '.' && tile_at(px - 1, py + 7) == '.'
+        if tiles_getat(px - 1, py) == '.' && tiles_getat(px - 1, py + 7) == '.'
             px -= 1
     else if pads[0].held & BUTTON_RIGHT
-        if tile_at(px + 8, py) == '.' && tile_at(px + 8, py + 7) == '.'
+        if tiles_getat(px + 8, py) == '.' && tiles_getat(px + 8, py + 7) == '.'
             px += 1
 
     // Move the player vertically based on button presses
     if pads[0].held & BUTTON_UP
-        if tile_at(px, py - 1) == '.' && tile_at(px + 7, py - 1) == '.'
+        if tiles_getat(px, py - 1) == '.' && tiles_getat(px + 7, py - 1) == '.'
             py -= 1
     else if pads[0].held & BUTTON_DOWN
-        if tile_at(px, py + 8) == '.' && tile_at(px + 7, py + 8) == '.'
+        if tiles_getat(px, py + 8) == '.' && tiles_getat(px + 7, py + 8) == '.'
             py += 1
     
     // Handle underflowing / overflowing, harder for py since mod 480 not mod 512 so not automatic and also have to handle over and under flow separately

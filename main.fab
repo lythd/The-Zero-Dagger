@@ -1,3 +1,6 @@
+// main.fab, functions prefixed with main_
+// The entry point and high level manager of the game
+
 vars /game_vars
     CCC/levels level_ptr
     UU px = 128 // Player x and y are each 9 bits
@@ -10,7 +13,7 @@ vars /game_vars
     U text_counter = 0
     U text_index = 0
 
-fn vblank_update()
+fn main_vblankupdate()
     // Update OAM and poll the pads
     ppu_upload_oam_poll_pads(0)
     
@@ -33,7 +36,7 @@ fn vblank_update()
     ppu_reset_scroll(uscrollx, uscrolly) // set scroll within nametable to sx, sy
 
 nmi main_nmi()
-    vblank_update()
+    main_vblankupdate()
 
 mode main()
 : nmi main_nmi
@@ -50,11 +53,11 @@ mode main()
     // Only load tilesheets the first time since it shouldn't change and takes a while
     if nmc == $80
         nmc = 0
-        upload_tilesheets()
+        tiles_uploadsheets()
 
     // Setup and load the level
     level_ptr = @level1
-    load_level()
+    tiles_loadlevel()
     
     // Turn on rendering
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
@@ -65,8 +68,8 @@ mode main()
     // Wait forever, one frame at a time
     while true
         update_pads()
-        move_player() 
-        update_sprites()
+        sprites_moveplayer() 
+        sprites_update()
         if pads[0].pressed & BUTTON_A
             // Set the dialogue text and go to dialogue
             text[0] = 'H'
