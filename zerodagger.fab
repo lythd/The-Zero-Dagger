@@ -5,11 +5,15 @@ vars /game_vars
     U sx = 128 // Scroll offset from player, technically negative, this is not the scroll value itself just the offset!
     U sy = 128
     U nmc = %10000000 // either %00 %01 %10 %11, name table coordinates, $80 means unitialized
+    
+    U[16] text
+    U text_counter = 0
+    U text_index = 0
 
 // charmaps can be used to get a nice syntax for defining levels.
 charmap(".,-_#$123789ABCD0;+=@&456EF")
 
-// The levels are defined here:
+// The levels are defined here
 data /levels
     [] level1
         ("#$#$#$#$#$#$#.#$#$#$.$#$#$#$#$#$#....$#$#$#$#$#$#$#$#$#$#$#$#$#$"
@@ -74,17 +78,17 @@ data /levels
          "................................................................")
 
 fn load_nametable(U nametable) // takes 0 1 2 or 3
-    // Tell the NES which VRAM address we want to upload to:
+    // Tell the NES which VRAM address we want to upload to
     ppu_reset_addr($2000 + (UU(nametable) << 10)) // $2000, $2400, $2800, $2C00
     U i_start = (nametable & $01) << 5 // 0 or 32
     UU j_start = UU(U(nametable & $02) * U($0f)) // 0 or 30
 
-    // Upload the tile data:
+    // Upload the tile data
     for UU j = j_start; j < 30 + j_start; j += 1 // either 0<=j<30 or 30<=j<60 based on which nametable
         for U i = i_start; i < 32 + i_start; i += 1 // either 0<=i<32 or 32<=i<64 based on which nametable
             {PPUDATA}((level_ptr + j * 64)[i])
 
-    // Then the attributes:
+    // Then the attributes
     for U i = 0; i < 64; i += 1
         {PPUDATA}((nametable << 6) | (nametable << 4) | (nametable << 2) | (nametable))
     
@@ -104,38 +108,85 @@ fn load_level()
     load_nametable(%10)
     load_nametable(%11)
 
-nmi dialogue_nmi()
-    // Update OAM and poll the pads:
-    ppu_upload_oam_poll_pads(0)
-
-    // Turn on rendering:
-    {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
+fn make_text_box(UU x, UU y, U width, U height)
     
-    // Calculate scroll values and nametable coords based on the player coordinates and the scroll offset
-    UU scrollx = (px - UU(sx)) 
-    U uscrollx = U(scrollx & $00ff) // the x scroll fits perfectly into 256 so modulo can be done with &
-    U pnmc = U((scrollx & $0100) >> 8) // %000000yx making a new name table coordinate based on the scroll
+    U pnmc = 0
+    UU adr = 0
+    U i = 0
+    UU x2 = 0
+    UU y2 = 0
+    U texttile = 0
+    U texttiley = 0
     
-    UU scrolly = (py - UU(sy)) 
-    if (scrolly & $8000) != 0
-        scrolly += 480
-    if scrolly >= $f0 // y is not so lucky, needs to be modulo 240
-        scrolly -= $f0
-        pnmc |= %10
-    U uscrolly = U(scrolly)
-    
-    //U pnmc = U((px & $0100) >> 8) // %000000yx making a new name table coordinate based on the player coords
-    //if py >= 240
-        //pnmc |= $02
-    
-    if nmc != pnmc 
-        nmc = pnmc
-        {PPUCTRL}(PPUCTRL_NMI_ON | nmc) // update active nametable
-    //ppu_reset_scroll(uscrollx, uscrolly) // set scroll within nametable to sx, sy
-    ppu_reset_scroll(0, 0)
+    for U j = 0; j < height ; j += 1
+        if j == 0
+            texttiley = '2'
+        else if j == height - 1
+            texttiley = '8'
+        else
+            texttiley = '5'
+        for i = 0; i < width ; i += 1
+            texttile = texttiley
+            if i == 0
+                texttile -= 1
+            else if i == width - 1
+                texttile += 1
+        
+            // I know a lot is redundant but getting everything working across nametables is annoying
+            // Pretty bad for performance (esp don't like resetting each time) but its a one time and yeah
+            x2 = x + UU(i << 3)
+            y2 = y + UU(j << 3)
+            
+            // Handle under/overflow
+            x2 &= $01ff
+            if (y2 & $8000) != 0
+                y2 += 480
+            else if y2 >= 480
+                y2 -= 480
+            
+            // Divide by 8 to get the tile position
+            x2 >>= 3
+            y2 >>= 3
+            
+            // Which nametable
+            pnmc = U(x2) >> 5
+            x2 &= %11111
+            if y2 >= 30
+                y2 -= 30
+                pnmc |= %10
+            
+            // Calculate the address, $2000, $2400, $2800, $2C00 are each nametable, and then each one is 32 wide
+            adr = $2000 + (y2 << 5) + x2 + (UU(pnmc) << 10)
+            ppu_reset_addr(adr)
+            {PPUDATA}(texttile)
 
 mode dialogue()
-: nmi dialogue_nmi
+: nmi main_nmi
+    // Disable nmi
+    {PPUCTRL}(nmc)
+    
+    // Turn off rendering
+    {PPUMASK}(PPUMASK_NO_CLIP)
+    
+    // Set $2060 to A tile
+    make_text_box(px - UU(72), py + UU(48), 18, 6)
+    
+    // Set the dialogue text
+    text[0] = 'A'
+    text[1] = 'B'
+    text[2] = 'C'
+    text[3] = 'D'
+    text[4] = '0'
+    text_counter = 0
+    text_index = 0
+    
+    // Turn on rendering
+    {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
+    
+    // Tell the NES to trigger NMI once per frame
+    {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
+    
+    // Wait forever, one frame at a time
     while true
         update_pads()
         update_sprites()
@@ -145,11 +196,8 @@ mode dialogue()
         nmi
 
 nmi main_nmi()
-    // Update OAM and poll the pads:
+    // Update OAM and poll the pads
     ppu_upload_oam_poll_pads(0)
-
-    // Turn on rendering:
-    {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
     
     // Calculate scroll values and nametable coords based on the player coordinates and the scroll offset
     UU scrollx = (px - UU(sx)) 
@@ -164,24 +212,12 @@ nmi main_nmi()
         pnmc |= %10
     U uscrolly = U(scrolly)
     
-    //U pnmc = U((px & $0100) >> 8) // %000000yx making a new name table coordinate based on the player coords
-    //if py >= 240
-        //pnmc |= $02
-    
     if nmc != pnmc 
         nmc = pnmc
         {PPUCTRL}(PPUCTRL_NMI_ON | nmc) // update active nametable
     ppu_reset_scroll(uscrollx, uscrolly) // set scroll within nametable to sx, sy
 
-fn init_game()
-    // Set the palette:
-    palette = example_palette
-    ppu_upload_palette()
-
-    // Set and load the level:
-    level_ptr = @level1
-    load_level()
-    
+fn upload_tilesheets()
     // Upload tilesheets
     state(M30_CHR(0))
     ppu_set_addr($0000)
@@ -200,15 +236,32 @@ fn init_game()
 
 mode main()
 : nmi main_nmi
+    // Disable nmi
+    {PPUCTRL}(nmc)
     
+    // Turn off rendering
+    {PPUMASK}(PPUMASK_NO_CLIP)
+    
+    // Set the palette
+    palette = example_palette
+    ppu_upload_palette()
+    
+    // Only load tilesheets the first time since it shouldn't change and takes a while
     if nmc == $80
         nmc = 0
-        init_game()
+        upload_tilesheets()
+
+    // Setup and load the level
+    level_ptr = @level1
+    load_level()
     
-    // Tell the NES to trigger NMI once per frame:
+    // Turn on rendering
+    {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
+    
+    // Tell the NES to trigger NMI once per frame
     {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
     
-    // Wait forever, one frame at a time:
+    // Wait forever, one frame at a time
     while true
         update_pads()
         move_player() 
@@ -219,10 +272,10 @@ mode main()
         nmi
 
 fn update_sprites()
-    // Our stack index into OAM:
+    // Our stack index into OAM
     U i = 0
 
-    // Push a sprite:
+    // Push a sprite
     U upx = U(px & $00ff)
     U upy = U(py & $00ff)
     set_oam_x(i, sx)     // x-position
@@ -235,7 +288,7 @@ fn update_sprites()
     hide_oam(i)
 
 fn move_player()    
-    // Move the player horizontally based on button presses:
+    // Move the player horizontally based on button presses
     if pads[0].held & BUTTON_LEFT
         if tile_at(px - 1, py) == '.' && tile_at(px - 1, py + 7) == '.'
             px -= 1
@@ -243,7 +296,7 @@ fn move_player()
         if tile_at(px + 8, py) == '.' && tile_at(px + 8, py + 7) == '.'
             px += 1
 
-    // Move the player vertically based on button presses:
+    // Move the player vertically based on button presses
     if pads[0].held & BUTTON_UP
         if tile_at(px, py - 1) == '.' && tile_at(px + 7, py - 1) == '.'
             py -= 1
@@ -259,19 +312,21 @@ fn move_player()
         py -= 480
 
 fn tile_at(UU x, UU y) U
-    // handle under/overflow
+    // Handle under/overflow
+    px &= $01ff
     if (y & $8000) != 0
         y += 480
     else if y >= 480
         y -= 480
-    // Divide by 8 to get the tile position:
+    
+    // Divide by 8 to get the tile position
     x >>= 3
     y >>= 3
 
-    // Return the tile:
+    // Return the tile
     return (level_ptr + y * 64)[U(x)]
 
-// Define the tileset (commonly called CHR):
+// Define the tileset (commonly called CHR)
 data /pbz
     [] chr_0
          file(pbz, "tiles.png")
