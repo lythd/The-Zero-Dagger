@@ -1,0 +1,65 @@
+fn make_text_box(UU x, UU y, U width, U height)
+    U i = 0
+    U texttile = 0
+    U texttiley = 0
+    
+    // Loop through
+    for U j = 0; j < height ; j += 1
+        if j == 0
+            texttiley = '2'
+        else if j == height - 1
+            texttiley = '8'
+        else
+            texttiley = '5'
+        for i = 0; i < width ; i += 1
+            texttile = texttiley
+            if i == 0
+                texttile -= 1
+            else if i == width - 1
+                texttile += 1
+        
+            // I know a lot is redundant but getting everything working across nametables is annoying
+            // Pretty bad for performance (esp don't like ppu_resetting each time) but its a one time and yeah
+            set_tile(x + UU(i << 3), y + UU(j << 3), texttile)
+
+nmi dialogue_nmi()
+    text_counter += 1
+    if text_counter & U(%111) == 0 // every 8 frames add a character to the text
+        // Send char and handle stopping
+        if text_index < 64
+            if text[text_index] == '0'
+                text_index = 64
+            else
+                set_tile(px - UU(64) + UU((text_index & %1111) << 3), py + UU(56) + UU((text_index & %110000) >> 1), text[text_index])
+                text_index += 1
+                {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
+    
+    vblank_update()
+
+mode dialogue()
+: nmi dialogue_nmi
+    // Disable nmi
+    {PPUCTRL}(nmc)
+    
+    // Turn off rendering
+    {PPUMASK}(PPUMASK_NO_CLIP)
+    
+    // Make textbox for dialogue
+    make_text_box(px - UU(72), py + UU(48), 18, 6)
+    text_counter = 0
+    text_index = 0
+    
+    // Turn on rendering
+    {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
+    
+    // Tell the NES to trigger NMI once per frame
+    {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
+    
+    // Wait forever, one frame at a time
+    while true
+        update_pads()
+        update_sprites()
+        if pads[0].pressed & (BUTTON_A | BUTTON_B)
+            goto mode main()
+            : preserves /game_vars
+        nmi
