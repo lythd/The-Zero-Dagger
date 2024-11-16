@@ -1,5 +1,5 @@
 // charmaps can be used to get a nice syntax for defining levels.
-charmap(".,-_#$123789ABCD0;+=@&456EFYMNUH")
+charmap(".,-_#$123789ABCD0;+=@&456EFYMNUH", '0')
 
 // The levels are defined here
 data /levels
