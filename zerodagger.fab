@@ -6,7 +6,7 @@ vars /game_vars
     U sy = 128
     U nmc = %10000000 // either %00 %01 %10 %11, name table coordinates, $80 means unitialized
     
-    U[16] text
+    U[64] text = "0000000000000000000000000000000000000000000000000000000000000000" // I am using 0 as a null terminating character here
     U text_counter = 0
     U text_index = 0
 
@@ -108,16 +108,36 @@ fn load_level()
     load_nametable(%10)
     load_nametable(%11)
 
-fn make_text_box(UU x, UU y, U width, U height)
+fn set_tile(UU x, UU y, U tile)
+    // Handle under/overflow
+    x &= $01ff
+    if (y & $8000) != 0
+        y += 480
+    else if y >= 480
+        y -= 480
     
-    U pnmc = 0
-    UU adr = 0
+    // Divide by 8 to get the tile position
+    x >>= 3
+    y >>= 3
+    
+    // Which nametable
+    U pnmc = U(x) >> 5
+    x &= %11111
+    if y >= 30
+        y -= 30
+        pnmc |= %10
+            
+    // Calculate the address, $2000, $2400, $2800, $2C00 are each nametable, and then each one is 32 wide
+    UU adr = $2000 + (y << 5) + x + (UU(pnmc) << 10)
+    ppu_reset_addr(adr)
+    {PPUDATA}(tile)
+
+fn make_text_box(UU x, UU y, U width, U height)
     U i = 0
-    UU x2 = 0
-    UU y2 = 0
     U texttile = 0
     U texttiley = 0
     
+    // Loop through
     for U j = 0; j < height ; j += 1
         if j == 0
             texttiley = '2'
@@ -133,32 +153,8 @@ fn make_text_box(UU x, UU y, U width, U height)
                 texttile += 1
         
             // I know a lot is redundant but getting everything working across nametables is annoying
-            // Pretty bad for performance (esp don't like resetting each time) but its a one time and yeah
-            x2 = x + UU(i << 3)
-            y2 = y + UU(j << 3)
-            
-            // Handle under/overflow
-            x2 &= $01ff
-            if (y2 & $8000) != 0
-                y2 += 480
-            else if y2 >= 480
-                y2 -= 480
-            
-            // Divide by 8 to get the tile position
-            x2 >>= 3
-            y2 >>= 3
-            
-            // Which nametable
-            pnmc = U(x2) >> 5
-            x2 &= %11111
-            if y2 >= 30
-                y2 -= 30
-                pnmc |= %10
-            
-            // Calculate the address, $2000, $2400, $2800, $2C00 are each nametable, and then each one is 32 wide
-            adr = $2000 + (y2 << 5) + x2 + (UU(pnmc) << 10)
-            ppu_reset_addr(adr)
-            {PPUDATA}(texttile)
+            // Pretty bad for performance (esp don't like ppu_resetting each time) but its a one time and yeah
+            set_tile(x + UU(i << 3), y + UU(j << 3), texttile)
 
 mode dialogue()
 : nmi main_nmi
@@ -168,17 +164,15 @@ mode dialogue()
     // Turn off rendering
     {PPUMASK}(PPUMASK_NO_CLIP)
     
-    // Set $2060 to A tile
+    // Display text
     make_text_box(px - UU(72), py + UU(48), 18, 6)
-    
-    // Set the dialogue text
-    text[0] = 'A'
-    text[1] = 'B'
-    text[2] = 'C'
-    text[3] = 'D'
-    text[4] = '0'
     text_counter = 0
     text_index = 0
+    U i = 0
+    U cur_char = 0
+    for U j = 0 ; (text[j << 4 | i] != '0') && j < 4 ; j += 1
+        for i = 0 ; (text[j << 4 | i] != '0') && i < 16 ; i += 1
+            set_tile(px - UU(64) + UU(i << 3), py + UU(56) + UU(j << 3), text[j << 4 | i])
     
     // Turn on rendering
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
@@ -267,6 +261,12 @@ mode main()
         move_player() 
         update_sprites()
         if pads[0].pressed & BUTTON_A
+            // Set the dialogue text and go to dialogue
+            text[0] = 'A'
+            text[1] = 'B'
+            text[2] = 'C'
+            text[3] = 'D'
+            text[4] = '0'
             goto mode dialogue()
             : preserves /game_vars
         nmi
