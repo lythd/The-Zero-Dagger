@@ -1,22 +1,23 @@
-// main.fab, gen(eral) function set (main is taken by the main mode)
+// main.fab, functions prefixed with "main_"
 // The entry point and high level manager of the game
 
 vars /game_vars
-    CCC/levels level_ptr
+    //CCC/levels level_ptr
     UU px = 128 // Player x and y are each 9 bits
     UU py = 128
     U sx = 128 // Scroll offset from player, technically negative, this is not the scroll value itself just the offset!
     U sy = 128
     U nmc = %10000000 // either %00 %01 %10 %11, name table coordinates, $80 means unitialized
     
-    U[64] text = "0000000000000000000000000000000000000000000000000000000000000000" // I am using 0 as a null terminating character here
+    U[64] text = "000000000000000000000000000000000000000000000000000000000000000" // I am using 0 as a null terminating character here
     U text_counter = 0
     U text_index = 0
 
-fn gen.vblank_update()
+fn main_vblank_update()
     // Update OAM and poll the pads
     ppu_upload_oam_poll_pads(0)
     
+    /*
     // Calculate scroll values and nametable coords based on the player coordinates and the scroll offset
     UU scrollx = (px - UU(sx)) 
     U uscrollx = U(scrollx & $00ff) // the x scroll fits perfectly into 256 so modulo can be done with &
@@ -34,12 +35,16 @@ fn gen.vblank_update()
         nmc = pnmc
         {PPUCTRL}(PPUCTRL_NMI_ON | nmc) // update active nametable
     ppu_reset_scroll(uscrollx, uscrolly) // set scroll within nametable to sx, sy
+    */
+    ppu_reset_scroll(0, 0)
 
 nmi main_nmi()
-    gen.vblank_update()
+    main_vblank_update()
 
 mode main()
 : nmi main_nmi
+    U level_index = 0
+
     // Disable nmi
     {PPUCTRL}(nmc)
     
@@ -53,23 +58,27 @@ mode main()
     // Only load tilesheets the first time since it shouldn't change and takes a while
     if nmc == $80
         nmc = 0
-        tiles.upload_sheets()
+        //tiles_upload_sheets()
 
     // Setup and load the level
-    level_ptr = @level1
-    tiles.load_level()
+    //level_ptr = @level1
+    //tiles_load_level()
+    world_load_level(levels[level_index])
     
     // Turn on rendering
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
     
     // Tell the NES to trigger NMI once per frame
-    {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
+    //{PPUCTRL}(PPUCTRL_NMI_ON | nmc)
+    {PPUCTRL}(PPUCTRL_NMI_ON)
     
     // Wait forever, one frame at a time
     while true
         update_pads()
-        sprites.move_player() 
-        sprites.update()
+        world_update_sprites()
+        /*
+        sprites_move_player() 
+        sprites_update()
         if pads[0].pressed & BUTTON_A
             // Set the dialogue text and go to dialogue
             text[0] = 'H'
@@ -87,5 +96,6 @@ mode main()
             text[4] = '0'
             goto mode dialogue_mode()
             : preserves /game_vars
+        */
         nmi
 

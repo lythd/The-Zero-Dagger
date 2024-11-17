@@ -1,7 +1,8 @@
-// dialogue.fab, dialogue function set
+// dialogue.fab, functions prefixed with "dialogue_"
 // Concerned with making text boxes, text, and menus
 
-fn dialogue.make_box(UU x, UU y, U width, U height)
+/*
+fn dialogue_make_box(UU x, UU y, U width, U height)
     U i = 0
     U texttile = 0
     U texttiley = 0
@@ -23,7 +24,7 @@ fn dialogue.make_box(UU x, UU y, U width, U height)
         
             // I know a lot is redundant but getting everything working across nametables is annoying
             // Pretty bad for performance (esp don't like ppu_resetting each time) but its a one time and yeah
-            tiles.set_at(x + UU(i << 3), y + UU(j << 3), texttile)
+            tiles_set_at(x + UU(i << 3), y + UU(j << 3), texttile)
 
 nmi dialogue_nmi()
     text_counter += 1
@@ -33,11 +34,11 @@ nmi dialogue_nmi()
             if text[text_index] == '0'
                 text_index = 64
             else
-                tiles.set_at(px - UU(64) + UU((text_index & %1111) << 3), py + UU(56) + UU((text_index & %110000) >> 1), text[text_index])
+                tiles_set_at(px - UU(64) + UU((text_index & %1111) << 3), py + UU(56) + UU((text_index & %110000) >> 1), text[text_index])
                 text_index += 1
                 {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
     
-    gen.vblank_update()
+    main_vblank_update()
 
 mode dialogue_mode()
 : nmi dialogue_nmi
@@ -48,7 +49,7 @@ mode dialogue_mode()
     {PPUMASK}(PPUMASK_NO_CLIP)
     
     // Make textbox for dialogue
-    dialogue.make_box(px - UU(72), py + UU(48), 18, 6)
+    dialogue_make_box(px - UU(72), py + UU(48), 18, 6)
     text_counter = 0
     text_index = 0
     
@@ -61,8 +62,9 @@ mode dialogue_mode()
     // Wait forever, one frame at a time
     while true
         update_pads()
-        sprites.update()
+        sprites_update()
         if pads[0].pressed & (BUTTON_A | BUTTON_B)
             goto mode main()
             : preserves /game_vars
         nmi
+*/

@@ -1,0 +1,110 @@
+// world.fab, functions prefixed with "world_"
+// Concerned with the levels, nametables, and background palettes
+
+// Load the .mapfab file, calling the macros for each definition.
+mapfab(raw, "map.mapfab", "chr", "palette", "metatiles", "level")
+
+struct Enemy
+    U x
+    U y
+    U hp
+
+macro("pool_contiguous", "Enemy", "16", "enemies", "/game")
+
+// Used in level.macrofab to format the enemies:
+ct fn world_enemies_vec(Int{} x, Int{} y, U{} hitpoints) Enemy{}
+    Enemy{} out = Enemy{}()
+    for U i = 0; i < len(x); i += 1
+        push(out, Enemy(U(x{i}), U(y{i}), hitpoints{i}))
+    return out
+
+// Sets the OAM buffer in RAM (but doesn't upload to PPU):
+fn world_update_sprites()
+    // Our stack index into OAM:
+    U o = 0
+    for U i = 0; i < enemies_num; i += 1
+        set_oam(o, enemies[i].x - randb(8), enemies[i].y - randb(8), $92, 0)
+        o += 4
+    // Clear the remainder of OAM
+    hide_oam(o)
+
+vars /m16tiles
+    CC/m16tiles m16t_nw // north-west 8-tile
+    CC/m16tiles m16t_ne // north-east 8-tile
+    CC/m16tiles m16t_sw // south-west 8-tile
+    CC/m16tiles m16t_se // south-east 8-tile
+    CC/m16tiles m16t_ca // collisions (6 bits) + attributes (2 bits)
+
+// Sets the 'm16t_' pointers to offsets of 'm16t'.
+fn world_load_16tiles(CC/m16tiles m16t)
+    UU size = UU(read U(m16t))
+    if size == 0
+        size = 256
+    m16t_nw = m16t
+    m16t += size
+    m16t_ne = m16t
+    m16t += size
+    m16t_sw = m16t
+    m16t += size
+    m16t_se = m16t
+    m16t += size
+    m16t_ca = m16t
+
+fn world_upload_sheet(U chr_bank)
+    // Upload tilesheets
+    state(M30_CHR(chr_bank))
+    ppu_set_addr($0000)
+    ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(@chr_tiles, 0), 0)
+
+fn world_load_level(CCC/levels level)
+    // CHR:
+    U chr_bank = read U(level)
+    world_upload_sheet(chr_bank)
+    state(M30_CHR(chr_bank))
+
+    // Palette:
+    load_palette(read CCC/palettes(level))
+    ppu_upload_palette()
+
+    // Metatiles:
+    world_load_16tiles(read CC/m16tiles(level))
+
+    // Enemies:
+    enemies_clear()
+    U num = read U(level)
+    for U i = 0; i < num; i += 1
+        enemies_new(read Enemy(level))
+
+    // Level tiles:
+    ppu_reset_addr($2000)
+    CCC/levels tiles = level
+    for U y = 0; y < 15; y += 1
+        for U x = 0; x < 16; x += 1
+            U tile = tiles[x]
+            {PPUDATA}(m16t_nw[tile])
+            {PPUDATA}(m16t_ne[tile])
+        for U x = 0; x < 16; x += 1
+            U tile = tiles[x]
+            {PPUDATA}(m16t_sw[tile])
+            {PPUDATA}(m16t_se[tile])
+        tiles += 16
+
+    // Level attributes:
+    tiles = level
+    for U y = 0; y < 15; y += 2
+        for U x = 0; x < 16; x += 2
+            U attr = m16t_ca[tiles[x + 17]]
+            attr <<= 2
+            attr |= m16t_ca[tiles[x + 16]] & %11
+            attr <<= 2
+            attr |= m16t_ca[tiles[x + 1]] & %11
+            attr <<= 2
+            attr |= m16t_ca[tiles[x + 0]] & %11
+            {PPUDATA}(attr)
+        tiles += 32
+
+    world_update_sprites()
+
+ct CCC/levels[] levels = CCC/levels[](
+    @lev_world)
+

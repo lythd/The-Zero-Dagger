@@ -1,0 +1,16 @@
+#:name:# 
+#:path:# 
+
+// If we used CNROM, we'd store each CHR file at a different offset.
+// Instead we used mapper30 so need to pbz it.
+// Note that you don't have to use "path"; you could use "name" to derive a filename instead.
+
+ct U chr_#name#_index = _index
+
+//chrrom _index * $2000
+    //file(fmt, #"path"#)
+
+// Define the tileset (commonly called CHR)
+data /pbz
+    [] chr_#name#
+         file(pbz, #"path"#)
