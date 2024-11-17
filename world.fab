@@ -56,54 +56,67 @@ fn world_upload_sheet(U chr_bank, CCC/pbz chr_bank_ptr)
     ppu_set_addr($0000)
     ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(chr_bank_ptr, 0), 0)
 
-fn world_load_level(CCC/levels level)
-    // CHR:
-    U chr_bank = read U(level)
-    CCC/pbz chr_bank_ptr = read CCC/pbz(level)
-    world_upload_sheet(chr_bank, chr_bank_ptr)
-    state(M30_CHR(chr_bank))
+fn world_load_nametable(U nametable, CCC/levels level) // takes 0 1 2 or 3
+    // Set address to either $2000, $2400, $2800, or $2C00 to get to the right nametable
+    ppu_reset_addr($2000 + (UU(nametable) << 10))
+    U x_start = (nametable & %01) << 4 // 0 or 16
 
-    // Palette:
-    load_palette(read CCC/palettes(level))
-    ppu_upload_palette()
-
-    // Metatiles:
-    world_load_16tiles(read CC/m16tiles(level))
-
-    // Enemies:
-    enemies_clear()
-    U num = read U(level)
-    for U i = 0; i < num; i += 1
-        enemies_new(read Enemy(level))
-
-    // Level tiles:
-    ppu_reset_addr($2000)
+    // Level tiles
     CCC/levels tiles = level
+    tiles += ((nametable & %10) >> 1) * 480 // Bottom two nametables (left vs right is solved with x) are 480 (32 * 15) down from top ones
     for U y = 0; y < 15; y += 1
-        for U x = 0; x < 16; x += 1
+        for U x = x_start; x < 16 + x_start; x += 1
             U tile = tiles[x]
             {PPUDATA}(m16t_nw[tile])
             {PPUDATA}(m16t_ne[tile])
-        for U x = 0; x < 16; x += 1
+        for U x = x_start; x < 16 + x_start; x += 1
             U tile = tiles[x]
             {PPUDATA}(m16t_sw[tile])
             {PPUDATA}(m16t_se[tile])
-        tiles += 16
+        tiles += 32
 
-    // Level attributes:
+    // Level attributes
     tiles = level
+    tiles += ((nametable & %10) >> 1) * 480 // Bottom two nametables (left vs right is solved with x) are 480 (32 * 15) down from top ones
     for U y = 0; y < 15; y += 2
-        for U x = 0; x < 16; x += 2
-            U attr = m16t_ca[tiles[x + 17]]
+        for U x = x_start; x < 16 + x_start; x += 2
+            U attr = m16t_ca[tiles[x + 33]]
             attr <<= 2
-            attr |= m16t_ca[tiles[x + 16]] & %11
+            attr |= m16t_ca[tiles[x + 32]] & %11
             attr <<= 2
             attr |= m16t_ca[tiles[x + 1]] & %11
             attr <<= 2
             attr |= m16t_ca[tiles[x + 0]] & %11
             {PPUDATA}(attr)
-        tiles += 32
+        tiles += 64
 
+fn world_load_level(CCC/levels level)
+    // CHR
+    U chr_bank = read U(level)
+    CCC/pbz chr_bank_ptr = read CCC/pbz(level)
+    world_upload_sheet(chr_bank, chr_bank_ptr)
+    state(M30_CHR(chr_bank))
+
+    // Palette
+    load_palette(read CCC/palettes(level))
+    ppu_upload_palette()
+
+    // Metatiles
+    world_load_16tiles(read CC/m16tiles(level))
+
+    // Enemies
+    enemies_clear()
+    U num = read U(level)
+    for U i = 0; i < num; i += 1
+        enemies_new(read Enemy(level))
+
+    // Nametables
+    world_load_nametable(%00, level)
+    world_load_nametable(%01, level)
+    world_load_nametable(%10, level)
+    world_load_nametable(%11, level)
+
+    // Update sprites
     world_update_sprites()
 
 ct CCC/levels[] levels = CCC/levels[](
