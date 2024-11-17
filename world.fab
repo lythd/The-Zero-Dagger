@@ -50,16 +50,17 @@ fn world_load_16tiles(CC/m16tiles m16t)
     m16t += size
     m16t_ca = m16t
 
-fn world_upload_sheet(U chr_bank)
+fn world_upload_sheet(U chr_bank, CCC/pbz chr_bank_ptr)
     // Upload tilesheets
     state(M30_CHR(chr_bank))
     ppu_set_addr($0000)
-    ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(@chr_tiles, 0), 0)
+    ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(chr_bank_ptr, 0), 0)
 
 fn world_load_level(CCC/levels level)
     // CHR:
     U chr_bank = read U(level)
-    world_upload_sheet(chr_bank)
+    CCC/pbz chr_bank_ptr = read CCC/pbz(level)
+    world_upload_sheet(chr_bank, chr_bank_ptr)
     state(M30_CHR(chr_bank))
 
     // Palette:
