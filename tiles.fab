@@ -26,7 +26,7 @@ fn tiles_load_level()
     tiles_load_nametable(%01)
     tiles_load_nametable(%10)
     tiles_load_nametable(%11)
-
+*/
 fn tiles_set_at(UU x, UU y, U tile)
     // Handle under/overflow
     x &= $01ff
@@ -50,7 +50,7 @@ fn tiles_set_at(UU x, UU y, U tile)
     UU adr = $2000 + (y << 5) + x + (UU(pnmc) << 10)
     ppu_reset_addr(adr)
     {PPUDATA}(tile)
-
+/*
 fn tiles_upload_sheets()
     // Upload tilesheets
     state(M30_CHR(0))

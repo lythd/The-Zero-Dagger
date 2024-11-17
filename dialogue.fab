@@ -1,7 +1,6 @@
 // dialogue.fab, functions prefixed with "dialogue_"
 // Concerned with making text boxes, text, and menus
 
-/*
 fn dialogue_make_box(UU x, UU y, U width, U height)
     U i = 0
     U texttile = 0
@@ -10,11 +9,11 @@ fn dialogue_make_box(UU x, UU y, U width, U height)
     // Loop through
     for U j = 0; j < height ; j += 1
         if j == 0
-            texttiley = '2'
+            texttiley = ' ' - 16
         else if j == height - 1
-            texttiley = '8'
+            texttiley = ' ' + 16
         else
-            texttiley = '5'
+            texttiley = ' '
         for i = 0; i < width ; i += 1
             texttile = texttiley
             if i == 0
@@ -62,9 +61,8 @@ mode dialogue_mode()
     // Wait forever, one frame at a time
     while true
         update_pads()
-        sprites_update()
+        //sprites_update()
         if pads[0].pressed & (BUTTON_A | BUTTON_B)
             goto mode main()
             : preserves /game_vars
         nmi
-*/
