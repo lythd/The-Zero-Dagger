@@ -1,4 +1,4 @@
-// main.fab, functions prefixed with main_
+// main.fab, gen(eral) function set (main is taken by the main mode)
 // The entry point and high level manager of the game
 
 vars /game_vars
@@ -13,7 +13,7 @@ vars /game_vars
     U text_counter = 0
     U text_index = 0
 
-fn main_vblankupdate()
+fn gen.vblank_update()
     // Update OAM and poll the pads
     ppu_upload_oam_poll_pads(0)
     
@@ -36,7 +36,7 @@ fn main_vblankupdate()
     ppu_reset_scroll(uscrollx, uscrolly) // set scroll within nametable to sx, sy
 
 nmi main_nmi()
-    main_vblankupdate()
+    gen.vblank_update()
 
 mode main()
 : nmi main_nmi
@@ -53,11 +53,11 @@ mode main()
     // Only load tilesheets the first time since it shouldn't change and takes a while
     if nmc == $80
         nmc = 0
-        tiles_uploadsheets()
+        tiles.upload_sheets()
 
     // Setup and load the level
     level_ptr = @level1
-    tiles_loadlevel()
+    tiles.load_level()
     
     // Turn on rendering
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
@@ -68,15 +68,15 @@ mode main()
     // Wait forever, one frame at a time
     while true
         update_pads()
-        sprites_moveplayer() 
-        sprites_update()
+        sprites.move_player() 
+        sprites.update()
         if pads[0].pressed & BUTTON_A
             // Set the dialogue text and go to dialogue
             text[0] = 'H'
             text[1] = 'E'
             text[2] = 'Y'
             text[3] = '0'
-            goto mode dialogue()
+            goto mode dialogue_mode()
             : preserves /game_vars
         else if pads[0].pressed & BUTTON_START
             // Set the dialogue text and go to dialogue
@@ -85,7 +85,7 @@ mode main()
             text[2] = 'N'
             text[3] = 'U'
             text[4] = '0'
-            goto mode dialogue()
+            goto mode dialogue_mode()
             : preserves /game_vars
         nmi
 

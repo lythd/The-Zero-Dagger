@@ -1,4 +1,4 @@
-// tiles.fab, functions prefixed with tiles_
+// tiles.fab, tiles function set
 // Concerned with tiles, nametables, and background palettes
 
 // charmaps can be used to get a nice syntax for defining levels.
@@ -68,7 +68,7 @@ data /levels
          "................................................................"
          "................................................................")
 
-fn tiles_loadnametable(U nametable) // takes 0 1 2 or 3
+fn tiles.load_nametable(U nametable) // takes 0 1 2 or 3
     // Tell the NES which VRAM address we want to upload to
     ppu_reset_addr($2000 + (UU(nametable) << 10)) // $2000, $2400, $2800, $2C00
     U i_start = (nametable & $01) << 5 // 0 or 32
@@ -83,13 +83,13 @@ fn tiles_loadnametable(U nametable) // takes 0 1 2 or 3
     for U i = 0; i < 64; i += 1
         {PPUDATA}((nametable << 6) | (nametable << 4) | (nametable << 2) | (nametable))
 
-fn tiles_loadlevel()
-    tiles_loadnametable(%00)
-    tiles_loadnametable(%01)
-    tiles_loadnametable(%10)
-    tiles_loadnametable(%11)
+fn tiles.load_level()
+    tiles.load_nametable(%00)
+    tiles.load_nametable(%01)
+    tiles.load_nametable(%10)
+    tiles.load_nametable(%11)
 
-fn tiles_setat(UU x, UU y, U tile)
+fn tiles.set_at(UU x, UU y, U tile)
     // Handle under/overflow
     x &= $01ff
     if (y & $8000) != 0
@@ -113,7 +113,7 @@ fn tiles_setat(UU x, UU y, U tile)
     ppu_reset_addr(adr)
     {PPUDATA}(tile)
 
-fn tiles_uploadsheets()
+fn tiles.upload_sheets()
     // Upload tilesheets
     state(M30_CHR(0))
     ppu_set_addr($0000)
@@ -130,7 +130,7 @@ fn tiles_uploadsheets()
 
     state(M30_CHR(0))
 
-fn tiles_getat(UU x, UU y) U
+fn tiles.get_at(UU x, UU y) U
     // Handle under/overflow
     px &= $01ff
     if (y & $8000) != 0
