@@ -23,7 +23,7 @@ fn dialogue_make_box(UU x, UU y, U width, U height)
         
             // I know a lot is redundant but getting everything working across nametables is annoying
             // Pretty bad for performance (esp don't like ppu_resetting each time) but its a one time and yeah
-            tiles_set_at(x + UU(i << 3), y + UU(j << 3), texttile)
+            tiles_set8_at(x + UU(i << 3), y + UU(j << 3), texttile)
 
 nmi dialogue_nmi()
     text_counter += 1
@@ -33,7 +33,7 @@ nmi dialogue_nmi()
             if text[text_index] == '0'
                 text_index = 64
             else
-                tiles_set_at(px - UU(64) + UU((text_index & %1111) << 3), py + UU(56) + UU((text_index & %110000) >> 1), text[text_index])
+                tiles_set8_at(px - UU(64) + UU((text_index & %1111) << 3), py + UU(56) + UU((text_index & %110000) >> 1), text[text_index])
                 text_index += 1
                 {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
     
@@ -61,7 +61,7 @@ mode dialogue_mode()
     // Wait forever, one frame at a time
     while true
         update_pads()
-        //sprites_update()
+        sprites_update()
         if pads[0].pressed & (BUTTON_A | BUTTON_B)
             goto mode main()
             : preserves /game_vars

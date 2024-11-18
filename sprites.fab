@@ -6,6 +6,22 @@ struct Entity
     U y
     U hp
 
+data /sprites
+    [] player_ms
+        (make_metasprite(0, Ms{}(
+            Ms(-8, -8, $80, $00),
+            Ms( 0, -8, $81, $00),
+            Ms(-8,  0, $90, $00),
+            Ms( 0,  0, $91, $00)
+        )))
+    [] slime_ms
+        (make_metasprite(0, Ms{}(
+            Ms(-8, -8, $82, $00),
+            Ms( 0, -8, $83, $00),
+            Ms(-8,  0, $92, $00),
+            Ms( 0,  0, $93, $00)
+        )))
+
 macro("pool_contiguous", "Entity", "16", "enemies", "/game")
 
 // Used in level.macrofab to format the enemies:
@@ -19,44 +35,34 @@ ct fn sprites_enemies_vec(Int{} x, Int{} y, U{} hitpoints) Entity{}
 fn sprites_update()
     // Our stack index into OAM:
     U o = 0
+
+    // Push the player
+    o = push_oam_metasprite_a(o, sx, sy - 1, @player_ms, pa)
+
+    // Push the enemies
     for U i = 0; i < enemies_num; i += 1
-        set_oam(o, enemies[i].x - randb(8), enemies[i].y - randb(8), $92, 0)
-        o += 4
+        o = push_oam_metasprite_a(o, enemies[i].x - randb(8), enemies[i].y - randb(8), @slime_ms, ATTR_H_FLIP)
+    
     // Clear the remainder of OAM
     hide_oam(o)
-
-/*
-fn sprites_update()
-    // Our stack index into OAM
-    U i = 0
-
-    // Push a sprite
-    U upx = U(px & $00ff)
-    U upy = U(py & $00ff)
-    set_oam_x(i, sx)     // x-position
-    set_oam_y(i, sy - 1) // y-position
-    set_oam_p(i, $20)    // tile
-    set_oam_a(i, 0)      // options
-    i += 4
-
-    // Clear the remainder of OAM
-    hide_oam(i)
 
 fn sprites_move_player()    
     // Move the player horizontally based on button presses
     if pads[0].held & BUTTON_LEFT
-        if tiles_get_at(px - 1, py) == '.' && tiles_get_at(px - 1, py + 7) == '.'
+        pa |= ATTR_H_FLIP
+        if m16t_ca[tiles_get16_at(px - 16, py)] & %11111100 == COLLISION_NONE
             px -= 1
     else if pads[0].held & BUTTON_RIGHT
-        if tiles_get_at(px + 8, py) == '.' && tiles_get_at(px + 8, py + 7) == '.'
+        pa &= ~ATTR_H_FLIP
+        if m16t_ca[tiles_get16_at(px + 16, py)] & %11111100 == COLLISION_NONE
             px += 1
 
     // Move the player vertically based on button presses
     if pads[0].held & BUTTON_UP
-        if tiles_get_at(px, py - 1) == '.' && tiles_get_at(px + 7, py - 1) == '.'
+        if m16t_ca[tiles_get16_at(px, py - 16)] & %11111100 == COLLISION_NONE
             py -= 1
     else if pads[0].held & BUTTON_DOWN
-        if tiles_get_at(px, py + 8) == '.' && tiles_get_at(px + 7, py + 8) == '.'
+        if m16t_ca[tiles_get16_at(px, py + 16)] & %11111100 == COLLISION_NONE
             py += 1
     
     // Handle underflowing / overflowing, harder for py since mod 480 not mod 512 so not automatic and also have to handle over and under flow separately
@@ -65,5 +71,3 @@ fn sprites_move_player()
         py += 480
     else if py >= 480
         py -= 480
-
-*/

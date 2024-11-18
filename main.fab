@@ -5,6 +5,7 @@ vars /game_vars
     //CCC/levels level_ptr
     UU px = 128 // Player x and y are each 9 bits
     UU py = 128
+    U pa = 0 // Player attributes, basically just used for flip or not
     U sx = 128 // Scroll offset from player, technically negative, this is not the scroll value itself just the offset!
     U sy = 128
     U nmc = %10000000 // either %00 %01 %10 %11, name table coordinates, $80 means unitialized
@@ -17,7 +18,6 @@ fn main_vblank_update()
     // Update OAM and poll the pads
     ppu_upload_oam_poll_pads(0)
     
-    /*
     // Calculate scroll values and nametable coords based on the player coordinates and the scroll offset
     UU scrollx = (px - UU(sx)) 
     U uscrollx = U(scrollx & $00ff) // the x scroll fits perfectly into 256 so modulo can be done with &
@@ -35,8 +35,6 @@ fn main_vblank_update()
         nmc = pnmc
         {PPUCTRL}(PPUCTRL_NMI_ON | nmc) // update active nametable
     ppu_reset_scroll(uscrollx, uscrolly) // set scroll within nametable to sx, sy
-    */
-    ppu_reset_scroll(0, 0)
 
 nmi main_nmi()
     main_vblank_update()
@@ -66,16 +64,13 @@ mode main()
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
     
     // Tell the NES to trigger NMI once per frame
-    //{PPUCTRL}(PPUCTRL_NMI_ON | nmc)
-    {PPUCTRL}(PPUCTRL_NMI_ON)
+    {PPUCTRL}(PPUCTRL_NMI_ON | nmc)
     
     // Wait forever, one frame at a time
     while true
         update_pads()
         sprites_update()
-        /*
-        sprites_move_player() 
-        */
+        sprites_move_player()
         if pads[0].pressed & BUTTON_A
             // Set the dialogue text and go to dialogue
             text[0] = 'H'

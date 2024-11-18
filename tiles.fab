@@ -4,6 +4,16 @@
 // Charmap to allow for string input into background tiles tile for dialogue
 charmap(" |ABCDEFGHIJKLM\n_\0NOPQRSTUVWXYZ0123456789.,:;+-=[]!?}l)(`~@#%&{\\><^vx/adh*mst", '\0', 176)
 
+// Different tile collision types:
+ct U COLLISION_NONE         = $00
+ct U COLLISION_WALL         = $01
+ct U COLLISION_WATER        = $02
+ct U COLLISION_WATER_BORDER = $03
+ct U COLLISION_TEXT         = $04
+ct U COLLISION_TELEPORT     = $05
+ct U COLLISION_ANIM         = $06
+ct U COLLISION_ANIM_WALL    = $07
+
 // M16 tiles pointers
 vars /m16tiles
     CC/m16tiles m16t_nw // north-west 8-tile
@@ -28,7 +38,7 @@ fn tiles_load_16tiles(CC/m16tiles m16t)
     m16t_ca = m16t
 
 // Sets the 8-tile at a certain location
-fn tiles_set_at(UU x, UU y, U tile)
+fn tiles_set8_at(UU x, UU y, U tile)
     // Handle under/overflow
     x &= $01ff
     if (y & $8000) != 0
@@ -52,9 +62,32 @@ fn tiles_set_at(UU x, UU y, U tile)
     ppu_reset_addr(adr)
     {PPUDATA}(tile)
 
+// Gets the 8-tile at a certain location
+fn tiles_get8_at(UU x, UU y) U
+    // Get the 16-tile and return the right 8-tile, wish there was a branchless way to do this
+    U m16tile = tiles_get16_at(U(x >> 1), U(y >> 1))
+    if x & 1
+        if y & 1
+            return m16t_se[m16tile]
+        return m16t_ne[m16tile]
+    if y & 1
+        return m16t_sw[m16tile]
+    return m16t_nw[m16tile]
+
 // Gets the 16-tile at a certain location, can use this as an index to any of the m16t_ pointers to get the data for it
-fn tiles_get16_at(U x, U y, U tile) U
+fn tiles_get16_at(UU x, UU y) U
     CCC/levels level = @lev_world
+
+    // Handle under/overflow
+    px &= $01ff
+    if (y & $8000) != 0
+        y += 480
+    else if y >= 480
+        y -= 480
+    
+    // Divide by 16 to get the tile position
+    x >>= 4
+    y >>= 4
 
     // Read first bits of data to advance the pointer
     read U(level)
@@ -64,21 +97,4 @@ fn tiles_get16_at(U x, U y, U tile) U
     read U(level)
 
     // Now can get the tile
-    return (level + y * 32)[x]
-
-/*
-fn tiles_get_at(UU x, UU y) U
-    // Handle under/overflow
-    px &= $01ff
-    if (y & $8000) != 0
-        y += 480
-    else if y >= 480
-        y -= 480
-    
-    // Divide by 8 to get the tile position
-    x >>= 3
-    y >>= 3
-
-    // Return the tile
-    return (level_ptr + y * 64)[U(x)]
-*/
+    return (level + y * 32)[U(x)]
