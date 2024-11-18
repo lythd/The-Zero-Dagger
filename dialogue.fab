@@ -30,7 +30,7 @@ nmi dialogue_nmi()
     if text_counter & U(%111) == 0 // every 8 frames add a character to the text
         // Send char and handle stopping
         if text_index < 64
-            if text[text_index] == '0'
+            if text[text_index] == '\0'
                 text_index = 64
             else
                 tiles_set8_at(px - UU(64) + UU((text_index & %1111) << 3), py + UU(56) + UU((text_index & %110000) >> 1), text[text_index])

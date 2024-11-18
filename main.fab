@@ -10,7 +10,7 @@ vars /game_vars
     U sy = 128
     U nmc = %10000000 // either %00 %01 %10 %11, name table coordinates, $80 means unitialized
     
-    U[64] text = "000000000000000000000000000000000000000000000000000000000000000" // I am using 0 as a null terminating character here
+    U[64] text = "\0BCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFG" // I am using \0 as a null terminating character here
     U text_counter = 0
     U text_index = 0
 
@@ -73,19 +73,12 @@ mode main()
         sprites_move_player()
         if pads[0].pressed & BUTTON_A
             // Set the dialogue text and go to dialogue
-            text[0] = 'H'
-            text[1] = 'E'
-            text[2] = 'Y'
-            text[3] = '0'
+            text = "HEY\0EFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFG"
             goto mode dialogue_mode()
             : preserves /game_vars
         else if pads[0].pressed & BUTTON_START
             // Set the dialogue text and go to dialogue
-            text[0] = 'M'
-            text[1] = 'E'
-            text[2] = 'N'
-            text[3] = 'U'
-            text[4] = '0'
+            text = "MENU\0FGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFG"
             goto mode dialogue_mode()
             : preserves /game_vars
         nmi
