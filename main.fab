@@ -54,16 +54,13 @@ mode main()
     // Set the palette
     palette = example_palette
     ppu_upload_palette()
-    
-    // Only load tilesheets the first time since it shouldn't change and takes a while
-    if nmc == $80
-        nmc = 0
-        //tiles_upload_sheets()
 
     // Setup and load the level
-    //level_ptr = @level1
-    //tiles_load_level()
     world_load_level(levels[level_index])
+    
+    // Only load tilesheets the first time since it shouldn't change and takes a while (load level knows to check this)
+    if nmc == $80
+        nmc = 0
     
     // Turn on rendering
     {PPUMASK}(PPUMASK_ON | PPUMASK_NO_CLIP)
@@ -75,10 +72,9 @@ mode main()
     // Wait forever, one frame at a time
     while true
         update_pads()
-        world_update_sprites()
+        sprites_update()
         /*
         sprites_move_player() 
-        sprites_update()
         */
         if pads[0].pressed & BUTTON_A
             // Set the dialogue text and go to dialogue

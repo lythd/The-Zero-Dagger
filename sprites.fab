@@ -1,8 +1,32 @@
 // sprites.fab, functions prefixed with "sprites_"
 // Concerned with sprites including the player
 
+struct Entity
+    U x
+    U y
+    U hp
+
+macro("pool_contiguous", "Entity", "16", "enemies", "/game")
+
+// Used in level.macrofab to format the enemies:
+ct fn sprites_enemies_vec(Int{} x, Int{} y, U{} hitpoints) Entity{}
+    Entity{} out = Entity{}()
+    for U i = 0; i < len(x); i += 1
+        push(out, Entity(U(x{i}), U(y{i}), hitpoints{i}))
+    return out
+
+// Sets the OAM buffer in RAM (but doesn't upload to PPU):
+fn sprites_update()
+    // Our stack index into OAM:
+    U o = 0
+    for U i = 0; i < enemies_num; i += 1
+        set_oam(o, enemies[i].x - randb(8), enemies[i].y - randb(8), $92, 0)
+        o += 4
+    // Clear the remainder of OAM
+    hide_oam(o)
+
 /*
-fn sprites.update()
+fn sprites_update()
     // Our stack index into OAM
     U i = 0
 
@@ -18,7 +42,7 @@ fn sprites.update()
     // Clear the remainder of OAM
     hide_oam(i)
 
-fn sprites.move_player()    
+fn sprites_move_player()    
     // Move the player horizontally based on button presses
     if pads[0].held & BUTTON_LEFT
         if tiles_get_at(px - 1, py) == '.' && tiles_get_at(px - 1, py + 7) == '.'

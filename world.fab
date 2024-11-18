@@ -4,52 +4,6 @@
 // Load the .mapfab file, calling the macros for each definition.
 mapfab(raw, "map.mapfab", "chr", "palette", "metatiles", "level")
 
-struct Enemy
-    U x
-    U y
-    U hp
-
-macro("pool_contiguous", "Enemy", "16", "enemies", "/game")
-
-// Used in level.macrofab to format the enemies:
-ct fn world_enemies_vec(Int{} x, Int{} y, U{} hitpoints) Enemy{}
-    Enemy{} out = Enemy{}()
-    for U i = 0; i < len(x); i += 1
-        push(out, Enemy(U(x{i}), U(y{i}), hitpoints{i}))
-    return out
-
-// Sets the OAM buffer in RAM (but doesn't upload to PPU):
-fn world_update_sprites()
-    // Our stack index into OAM:
-    U o = 0
-    for U i = 0; i < enemies_num; i += 1
-        set_oam(o, enemies[i].x - randb(8), enemies[i].y - randb(8), $92, 0)
-        o += 4
-    // Clear the remainder of OAM
-    hide_oam(o)
-
-vars /m16tiles
-    CC/m16tiles m16t_nw // north-west 8-tile
-    CC/m16tiles m16t_ne // north-east 8-tile
-    CC/m16tiles m16t_sw // south-west 8-tile
-    CC/m16tiles m16t_se // south-east 8-tile
-    CC/m16tiles m16t_ca // collisions (6 bits) + attributes (2 bits)
-
-// Sets the 'm16t_' pointers to offsets of 'm16t'.
-fn world_load_16tiles(CC/m16tiles m16t)
-    UU size = UU(read U(m16t))
-    if size == 0
-        size = 256
-    m16t_nw = m16t
-    m16t += size
-    m16t_ne = m16t
-    m16t += size
-    m16t_sw = m16t
-    m16t += size
-    m16t_se = m16t
-    m16t += size
-    m16t_ca = m16t
-
 fn world_upload_sheet(U chr_bank, CCC/pbz chr_bank_ptr)
     // Upload tilesheets
     state(M30_CHR(chr_bank))
@@ -94,21 +48,22 @@ fn world_load_level(CCC/levels level)
     // CHR
     U chr_bank = read U(level)
     CCC/pbz chr_bank_ptr = read CCC/pbz(level)
-    world_upload_sheet(chr_bank, chr_bank_ptr)
-    state(M30_CHR(chr_bank))
+    if nmc == $80
+        world_upload_sheet(chr_bank, chr_bank_ptr)
+        state(M30_CHR(chr_bank))
 
     // Palette
     load_palette(read CCC/palettes(level))
     ppu_upload_palette()
 
     // Metatiles
-    world_load_16tiles(read CC/m16tiles(level))
+    tiles_load_16tiles(read CC/m16tiles(level))
 
     // Enemies
     enemies_clear()
     U num = read U(level)
     for U i = 0; i < num; i += 1
-        enemies_new(read Enemy(level))
+        enemies_new(read Entity(level))
 
     // Nametables
     world_load_nametable(%00, level)
@@ -117,7 +72,7 @@ fn world_load_level(CCC/levels level)
     world_load_nametable(%11, level)
 
     // Update sprites
-    world_update_sprites()
+    sprites_update()
 
 ct CCC/levels[] levels = CCC/levels[](
     @lev_world)

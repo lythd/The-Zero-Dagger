@@ -10,6 +10,6 @@ data /levels
         (@pal_#palette_name#)   // Pointer to the palette
         (@m16t_#metatiles_name#)  // Pointer to the metatiles
         U(_enemies_num)
-        (world_enemies_vec(_enemies_x, _enemies_y, _enemies_hitpoints))
+        (sprites_enemies_vec(_enemies_x, _enemies_y, _enemies_hitpoints))
         (_row_major)            // The actual level tiles
         

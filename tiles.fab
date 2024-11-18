@@ -4,29 +4,30 @@
 // Charmap to allow for string input into background tiles tile for dialogue
 charmap(" |ABCDEFGHIJKLM\n_\0NOPQRSTUVWXYZ0123456789.,:;+-=[]!?}l)(`~@#%&{\\><^vx/adh*mst", '\0', 176)
 
-/*
+// M16 tiles pointers
+vars /m16tiles
+    CC/m16tiles m16t_nw // north-west 8-tile
+    CC/m16tiles m16t_ne // north-east 8-tile
+    CC/m16tiles m16t_sw // south-west 8-tile
+    CC/m16tiles m16t_se // south-east 8-tile
+    CC/m16tiles m16t_ca // collisions (6 bits) + attributes (2 bits)
 
-fn tiles_load_nametable(U nametable) // takes 0 1 2 or 3
-    // Tell the NES which VRAM address we want to upload to
-    ppu_reset_addr($2000 + (UU(nametable) << 10)) // $2000, $2400, $2800, $2C00
-    U i_start = (nametable & $01) << 5 // 0 or 32
-    UU j_start = UU(U(nametable & $02) * U($0f)) // 0 or 30
+// Sets the 'm16t_' pointers to offsets of 'm16t'.
+fn tiles_load_16tiles(CC/m16tiles m16t)
+    UU size = UU(read U(m16t))
+    if size == 0
+        size = 256
+    m16t_nw = m16t
+    m16t += size
+    m16t_ne = m16t
+    m16t += size
+    m16t_sw = m16t
+    m16t += size
+    m16t_se = m16t
+    m16t += size
+    m16t_ca = m16t
 
-    // Upload the tile data
-    for UU j = j_start; j < 30 + j_start; j += 1 // either 0<=j<30 or 30<=j<60 based on which nametable
-        for U i = i_start; i < 32 + i_start; i += 1 // either 0<=i<32 or 32<=i<64 based on which nametable
-            {PPUDATA}((level_ptr + j * 64)[i])
-
-    // Then the attributes
-    for U i = 0; i < 64; i += 1
-        {PPUDATA}((nametable << 6) | (nametable << 4) | (nametable << 2) | (nametable))
-
-fn tiles_load_level()
-    tiles_load_nametable(%00)
-    tiles_load_nametable(%01)
-    tiles_load_nametable(%10)
-    tiles_load_nametable(%11)
-*/
+// Sets the 8-tile at a certain location
 fn tiles_set_at(UU x, UU y, U tile)
     // Handle under/overflow
     x &= $01ff
@@ -50,24 +51,22 @@ fn tiles_set_at(UU x, UU y, U tile)
     UU adr = $2000 + (y << 5) + x + (UU(pnmc) << 10)
     ppu_reset_addr(adr)
     {PPUDATA}(tile)
+
+// Gets the 16-tile at a certain location, can use this as an index to any of the m16t_ pointers to get the data for it
+fn tiles_get16_at(U x, U y, U tile) U
+    CCC/levels level = @lev_world
+
+    // Read first bits of data to advance the pointer
+    read U(level)
+    read CCC/pbz(level)
+    read CCC/palettes(level)
+    read CC/m16tiles(level)
+    read U(level)
+
+    // Now can get the tile
+    return (level + y * 32)[x]
+
 /*
-fn tiles_upload_sheets()
-    // Upload tilesheets
-    state(M30_CHR(0))
-    ppu_set_addr($0000)
-    ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(@chr_0, 0), 0)
-    // state(M30_CHR(1))
-    // ppu_set_addr($0000)
-    // ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(@chr_1, 0), 0)
-    // state(M30_CHR(2))
-    // ppu_set_addr($0000)
-    // ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(@chr_2, 0), 0)
-    // state(M30_CHR(3))
-    // ppu_set_addr($0000)
-    // ppu_upload_pbz.chunks(ppu_upload_pbz.chunks(@chr_3, 0), 0)
-
-    state(M30_CHR(0))
-
 fn tiles_get_at(UU x, UU y) U
     // Handle under/overflow
     px &= $01ff
@@ -82,10 +81,4 @@ fn tiles_get_at(UU x, UU y) U
 
     // Return the tile
     return (level_ptr + y * 64)[U(x)]
-
-// Define the tileset (commonly called CHR)
-data /pbz
-    [] chr_0
-         file(pbz, "tiles.png")
-
 */
